@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="assets/logo.png">
+<title>Quadro VPN</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Quadro — VPN-клиент на Xray для Android и Windows. Как работает, как установить и как подключиться.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: одна длинная «панель управления» — стеклянные блоки на тёмно-синем фоне,
+   как в самом приложении; путь трафика — главная иллюстрация страницы. */
+:root {
+  --ink: #070a1c;
+  --bg: #0a0e26;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-2: rgba(255, 255, 255, 0.075);
+  --line: rgba(255, 255, 255, 0.11);
+  --line-strong: rgba(255, 255, 255, 0.2);
+  --text: #f2f5ff;
+  --dim: #b4bcda;
+  --muted: #8a93b8;
+  --cyan: #1fd1ff;
+  --blue: #2f7bff;
+  --violet: #9b4dff;
+  --good: #3dd68c;
+  --warn: #ffb74d;
+  --grad: linear-gradient(110deg, var(--cyan) 0%, var(--blue) 50%, var(--violet) 100%);
+  --display: "Unbounded", "Manrope", system-ui, sans-serif;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --r-lg: 28px;
+  --r-md: 18px;
+  --r-sm: 12px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--bg);
+}
+
+/* Фоновые пятна — как в приложении */
+.glow {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 32rem at 8% -6%, rgba(47, 123, 255, 0.28), transparent 70%),
+    radial-gradient(36rem 30rem at 100% 30%, rgba(155, 77, 255, 0.2), transparent 70%),
+    radial-gradient(40rem 26rem at 45% 110%, rgba(31, 209, 255, 0.16), transparent 70%),
+    var(--bg);
+}
+
+a { color: var(--cyan); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: #7fe4ff; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+
+.wrap {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 700; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2.3rem, 5.6vw, 4.1rem); line-height: 1.04; }
+h2 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); line-height: 1.12; }
+h3 { font-family: var(--body); font-weight: 800; font-size: 1.08rem; line-height: 1.35; letter-spacing: 0; }
+p { margin: 0; }
+
+.eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Шапка ─────────────────────────────── */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  background: rgba(10, 14, 38, 0.72);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; align-items: center; gap: 24px; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+.brand img { width: 34px; height: 34px; border-radius: 9px; }
+.brand span { font-family: var(--display); font-weight: 700; font-size: 1.2rem; }
+.nav { display: flex; gap: 22px; margin-left: auto; }
+.nav a { color: var(--dim); text-decoration: none; font-weight: 600; font-size: 0.93rem; }
+.nav a:hover { color: var(--text); }
+@media (max-width: 820px) { .nav { display: none; } .top .btn { margin-left: auto; } }
+
+/* ── Кнопки ─────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.97rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
+}
+.btn svg { width: 18px; height: 18px; flex: none; }
+.btn-primary { background: var(--grad); color: #fff; box-shadow: 0 10px 30px -10px rgba(47, 123, 255, 0.7); }
+.btn-primary:hover { color: #fff; filter: brightness(1.08); transform: translateY(-1px); }
+.btn-glass { background: var(--surface-2); color: var(--text); border: 1px solid var(--line-strong); }
+.btn-glass:hover { color: var(--text); background: rgba(255, 255, 255, 0.12); transform: translateY(-1px); }
+.btn-sm { padding: 9px 16px; font-size: 0.88rem; }
+
+/* ── Герой ─────────────────────────────── */
+.hero { padding-block: clamp(48px, 8vw, 96px) 40px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+.hero-copy { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.lead { font-size: clamp(1.05rem, 1.6vw, 1.2rem); color: var(--dim); max-width: 34em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 0.88rem; }
+.meta b { color: var(--dim); font-weight: 700; }
+
+.shot {
+  position: relative;
+  min-width: 0;
+}
+.shot::before {
+  content: "";
+  position: absolute;
+  inset: 10% 8% -4% 8%;
+  background: var(--grad);
+  filter: blur(60px);
+  opacity: 0.35;
+  border-radius: 50%;
+  z-index: -1;
+}
+.window {
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--ink);
+  overflow: hidden;
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
+}
+.window-bar { display: flex; align-items: center; gap: 7px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.window-bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); }
+.window-bar span { margin-left: 8px; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+.window img { display: block; width: 100%; height: auto; }
+
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+/* ── Секции ─────────────────────────────── */
+section { padding-block: clamp(56px, 8vw, 96px); }
+.sec-head { display: flex; flex-direction: column; gap: 12px; max-width: 46rem; margin-bottom: clamp(28px, 4vw, 44px); }
+.sec-head p { color: var(--dim); font-size: 1.05rem; }
+
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+
+/* ── Путь трафика ─────────────────────── */
+.route {
+  padding: clamp(20px, 3vw, 34px);
+  overflow-x: auto;
+}
+.route-svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.flow { display: none; list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 0; }
+.flow li { padding: 14px 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.flow li.app { background: rgba(47, 123, 255, 0.16); border-color: rgba(31, 209, 255, 0.55); }
+.flow li b { display: block; font-weight: 800; }
+.flow li span { color: var(--muted); font-size: 0.9rem; }
+.flow .arrow { background: none; border: 0; padding: 6px 0 6px 22px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); border-left: 3px solid; border-image: var(--grad) 1; margin-left: 20px; }
+.flow .arrow.direct { border-image: none; border-left: 3px dashed var(--good); color: var(--good); }
+@media (max-width: 640px) { .route-svg { display: none; } .flow { display: flex; } .route { overflow: visible; } }
+.route-svg .node rect { fill: rgba(255, 255, 255, 0.05); stroke: rgba(255, 255, 255, 0.16); }
+.route-svg .node.app rect { fill: rgba(47, 123, 255, 0.16); stroke: rgba(31, 209, 255, 0.55); }
+.route-svg text { font-family: var(--body); fill: var(--text); }
+.route-svg .t { font-weight: 800; font-size: 15px; }
+.route-svg .s { font-weight: 500; font-size: 12.5px; fill: var(--muted); }
+.route-svg .lbl { font-weight: 700; font-size: 11.5px; letter-spacing: 0.08em; fill: var(--muted); }
+.route-svg .wire { fill: none; stroke: rgba(255, 255, 255, 0.18); stroke-width: 2; }
+.route-svg .wire.enc { stroke: url(#g); stroke-width: 3; }
+.route-svg .wire.direct { stroke-dasharray: 5 6; stroke: rgba(61, 214, 140, 0.6); }
+.route-svg .pulse { fill: #fff; }
+@media (prefers-reduced-motion: reduce) { .route-svg .pulse { display: none; } }
+
+.explain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 34px; }
+.explain div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.explain p { color: var(--dim); font-size: 0.97rem; }
+.explain code, .mono { font-family: var(--mono); font-size: 0.86em; color: var(--cyan); background: rgba(31, 209, 255, 0.08); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+@media (max-width: 860px) { .explain { grid-template-columns: 1fr; gap: 22px; } }
+
+/* ── Возможности ─────────────────────── */
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.feat { padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.feat .ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--grad); }
+.feat .ico svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.feat p { color: var(--dim); font-size: 0.95rem; }
+.feat .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.tag { font-size: 0.76rem; font-weight: 700; color: var(--dim); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); }
+.feat.wide { grid-column: span 2; }
+@media (max-width: 960px) { .features { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .features { grid-template-columns: 1fr; } .feat.wide { grid-column: auto; } }
+
+/* ── Установка ─────────────────────── */
+.install { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.platform { padding: clamp(22px, 3vw, 32px); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.platform-head { display: flex; align-items: center; gap: 14px; }
+.platform-head .pi { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); flex: none; }
+.platform-head .pi svg { width: 24px; height: 24px; fill: var(--text); }
+.platform-head h3 { font-family: var(--display); font-size: 1.3rem; font-weight: 700; }
+.platform-head small { display: block; color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 14px; }
+ol.steps li::before {
+  content: counter(s);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--display); font-size: 0.85rem; font-weight: 700;
+  color: #fff; background: var(--grad);
+}
+ol.steps b { display: block; font-weight: 800; margin-bottom: 2px; }
+ol.steps span { color: var(--dim); font-size: 0.95rem; }
+.note { border-radius: var(--r-md); padding: 14px 16px; background: rgba(255, 183, 77, 0.08); border: 1px solid rgba(255, 183, 77, 0.28); color: var(--dim); font-size: 0.92rem; }
+.note b { color: var(--warn); }
+.abi { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: 0.9rem; color: var(--dim); }
+.abi code { font-family: var(--mono); font-size: 0.85rem; color: var(--text); }
+@media (max-width: 860px) { .install { grid-template-columns: 1fr; } }
+
+/* ── Первое подключение ─────────────── */
+.start { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(24px, 4vw, 48px); align-items: start; }
+.start ol.steps { gap: 22px; }
+.start ol.steps li::before { width: 34px; height: 34px; font-size: 0.95rem; }
+.start ol.steps li { grid-template-columns: 34px minmax(0, 1fr); }
+.platform-split { display: grid; gap: 4px; margin-top: 6px; font-size: 0.92rem; color: var(--dim); }
+.platform-split em { font-style: normal; font-weight: 700; color: var(--text); }
+@media (max-width: 900px) { .start { grid-template-columns: 1fr; } }
+
+/* ── Режимы на ПК ─────────────────── */
+.modes { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 560px; }
+th, td { text-align: left; padding: 15px 20px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font-family: var(--display); font-weight: 700; font-size: 1.02rem; }
+thead th small { display: block; font-family: var(--body); font-weight: 600; font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+tbody th { color: var(--muted); font-weight: 700; font-size: 0.9rem; width: 26%; }
+tbody td { color: var(--dim); font-size: 0.95rem; }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+.yes { color: var(--good); font-weight: 700; }
+.no { color: var(--muted); font-weight: 700; }
+
+/* ── Маршрутизация ─────────────────── */
+.routing { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: clamp(24px, 4vw, 48px); align-items: center; }
+.rules { display: flex; flex-direction: column; gap: 12px; }
+.rule { padding: 16px 18px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 12px; }
+.rule i { width: 10px; height: 10px; border-radius: 50%; margin-top: 7px; }
+.rule p { color: var(--dim); font-size: 0.93rem; }
+.rule h3 { margin-bottom: 2px; }
+@media (max-width: 900px) { .routing { grid-template-columns: 1fr; } }
+
+/* ── Вопросы ─────────────────────── */
+.faq { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.qa { padding: 22px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.qa p { color: var(--dim); font-size: 0.95rem; }
+@media (max-width: 760px) { .faq { grid-template-columns: 1fr; } }
+
+/* ── Скачать ─────────────────────── */
+.download {
+  padding: clamp(28px, 5vw, 56px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  background:
+    radial-gradient(30rem 16rem at 100% 0%, rgba(155, 77, 255, 0.25), transparent 70%),
+    radial-gradient(30rem 16rem at 0% 100%, rgba(31, 209, 255, 0.18), transparent 70%),
+    var(--surface);
+}
+.download p { color: var(--dim); margin-top: 10px; max-width: 34em; }
+@media (max-width: 760px) { .download { grid-template-columns: 1fr; } }
+
+footer { padding-block: 36px 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.88rem; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; justify-content: space-between; }
+footer p { max-width: 40rem; }
+</style>
+</head>
+<body>
+
+<div class="glow" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Quadro — в начало">
+      <img src="assets/logo.png" alt="" width="34" height="34">
+      <span>Quadro</span>
+    </a>
+    <nav class="nav" aria-label="Разделы">
+      <a href="#how">Как работает</a>
+      <a href="#features">Возможности</a>
+      <a href="#install">Установка</a>
+      <a href="#start">Первое подключение</a>
+      <a href="#faq">Вопросы</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener">Скачать</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- Герой -->
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">VPN-клиент · Android и Windows</span>
+        <h1>Одна кнопка&nbsp;— <span class="grad-text">и ты в&nbsp;сети</span></h1>
+        <p class="lead">Quadro подключается к VPN-серверам на Xray. Вставь ссылку от своего провайдера и нажми кнопку. Трафик пойдёт через зашифрованный туннель, а российские сайты по-прежнему будут открываться напрямую.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.5v7H3zM11.5 4.4 21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg>
+            Скачать для Windows
+          </a>
+          <a class="btn btn-glass" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.4 11.4 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5"/></svg>
+            Скачать для Android
+          </a>
+        </div>
+        <div class="meta">
+          <span>Версия <b>1.7.1</b></span>
+          <span>Обновляется <b>само</b></span>
+          <span>Разработчик <b>N1les</b></span>
+        </div>
+      </div>
+      <div class="shot">
+        <div class="window">
+          <div class="window-bar"><i></i><i></i><i></i><span>Quadro для Windows</span></div>
+          <img src="assets/home.webp" width="1560" height="1050" alt="Главный экран Quadro для Windows: подключено, сервер Финляндия, загрузка 66,5 Мбит/с, задержка 46 мс">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Как работает -->
+  <section id="how">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Как это работает</span>
+        <h2>Quadro — это клиент. Серверы даёт твой провайдер</h2>
+        <p>Внутри Quadro работает ядро Xray. Оно шифрует трафик и отправляет его на сервер, который ты получил от VPN-провайдера. Сайты видят адрес сервера, а не твой.</p>
+      </div>
+
+      <div class="glass route">
+        <svg class="route-svg" viewBox="0 0 1040 300" role="img" aria-label="Путь трафика: устройство, Quadro с ядром Xray, зашифрованный туннель до сервера провайдера и дальше в интернет; российские сайты идут напрямую">
+          <defs>
+            <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="470" y1="0" x2="582" y2="0">
+              <stop offset="0" stop-color="#1fd1ff"/>
+              <stop offset=".5" stop-color="#2f7bff"/>
+              <stop offset="1" stop-color="#9b4dff"/>
+            </linearGradient>
+          </defs>
+
+          <path id="w1" class="wire" d="M196 110 H262"/>
+          <path id="w2" class="wire enc" d="M470 110 H582"/>
+          <path id="w3" class="wire" d="M790 110 H852"/>
+          <path id="w4" class="wire direct" d="M366 152 V230 H852"/>
+
+          <text class="lbl" x="526" y="94" text-anchor="middle">ТУННЕЛЬ</text>
+          <text class="lbl" x="610" y="218" text-anchor="middle" style="fill:#3dd68c">НАПРЯМУЮ</text>
+
+          <g class="node"><rect x="20" y="68" width="176" height="84" rx="18"/>
+            <text class="t" x="40" y="104">Твоё устройство</text>
+            <text class="s" x="40" y="128">браузер, игры, приложения</text></g>
+
+          <g class="node app"><rect x="262" y="68" width="208" height="84" rx="18"/>
+            <text class="t" x="282" y="104">Quadro</text>
+            <text class="s" x="282" y="128">ядро Xray шифрует трафик</text></g>
+
+          <g class="node"><rect x="582" y="68" width="208" height="84" rx="18"/>
+            <text class="t" x="602" y="104">Сервер провайдера</text>
+            <text class="s" x="602" y="128">VLESS, Trojan, Hysteria2…</text></g>
+
+          <g class="node"><rect x="852" y="68" width="168" height="84" rx="18"/>
+            <text class="t" x="872" y="104">Интернет</text>
+            <text class="s" x="872" y="128">YouTube, Instagram…</text></g>
+
+          <g class="node"><rect x="852" y="194" width="168" height="72" rx="18"/>
+            <text class="t" x="872" y="226">Российские сайты</text>
+            <text class="s" x="872" y="248">Госуслуги, банки</text></g>
+
+          <circle class="pulse" r="4.5">
+            <animateMotion dur="2.6s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#w2"/></animateMotion>
+          </circle>
+          <circle class="pulse" r="3.5" style="fill:#3dd68c">
+            <animateMotion dur="3.4s" repeatCount="indefinite"><mpath href="#w4"/></animateMotion>
+          </circle>
+        </svg>
+        <ol class="flow" aria-hidden="true">
+          <li><b>Твоё устройство</b><span>браузер, игры, приложения</span></li>
+          <li class="arrow">&nbsp;</li>
+          <li class="app"><b>Quadro</b><span>ядро Xray шифрует трафик</span></li>
+          <li class="arrow">ТУННЕЛЬ</li>
+          <li><b>Сервер провайдера</b><span>VLESS, Trojan, Hysteria2…</span></li>
+          <li class="arrow">&nbsp;</li>
+          <li><b>Интернет</b><span>YouTube, Instagram…</span></li>
+          <li class="arrow direct">РОССИЙСКИЕ САЙТЫ — НАПРЯМУЮ ИЗ QUADRO</li>
+          <li><b>Российские сайты</b><span>Госуслуги, банки</span></li>
+        </ol>
+      </div>
+
+      <div class="explain">
+        <div>
+          <h3>Ссылка вместо настроек</h3>
+          <p>Провайдер выдаёт ссылку на сервер (<code>vless://…</code>) или на подписку (<code>https://…</code>). Подписка — это список серверов, который Quadro обновляет сам.</p>
+        </div>
+        <div>
+          <h3>Тот же Xray, что у всех</h3>
+          <p>Работают VLESS с Reality и xhttp, VMess, Trojan, Shadowsocks и Hysteria2 — всё, что обычно раздают провайдеры. На телефоне и ПК одно и то же ядро.</p>
+        </div>
+        <div>
+          <h3>Не всё нужно гнать через VPN</h3>
+          <p>Сайты в зонах .ru, .рф и .su, банки и Госуслуги по умолчанию идут напрямую: они быстрее работают и не просят выключить VPN.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Возможности -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Возможности</span>
+        <h2>Всё, что нужно каждый день</h2>
+      </div>
+      <div class="features">
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></div>
+          <h3>Подписки и авто-выбор лучшего</h3>
+          <p>Добавь подписку — Quadro загрузит серверы, проверит пинг каждого и будет обновлять список сам. Включи «Авто-выбор», и при подключении возьмётся самый быстрый сервер. Видно, сколько гигабайт потрачено и когда подписка закончится.</p>
+          <div class="tags"><span class="tag">пинг в мс</span><span class="tag">12 из 100 ГБ</span><span class="tag">ещё 23 дня</span></div>
+        </article>
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h6"/><path d="m17 15 3 3-3 3"/></svg></div>
+          <h3>Сплит-туннелирование</h3>
+          <p>Выбери программы, которые идут через VPN, или те, что идут мимо него. Например, игры напрямую, а браузер через туннель.</p>
+        </article>
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
+          <h3>Два режима на ПК</h3>
+          <p>Системный прокси для браузеров — без прав администратора. TUN — для всего компьютера, включая игры и программы без настроек прокси.</p>
+        </article>
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></div>
+          <h3>Статистика трафика</h3>
+          <p>Скорость в реальном времени, задержка через VPN, внешний IP и сколько прошло через туннель за день и за месяц.</p>
+        </article>
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <h3>HWID для лимита устройств</h3>
+          <p>Если провайдер ограничивает число устройств, Quadro отправит идентификатор этого устройства. Сообщит, если лимит исчерпан.</p>
+        </article>
+        <article class="glass feat">
+          <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></div>
+          <h3>Обновления сами</h3>
+          <p>Новые версии приходят прямо в приложение. На Android — установка в пару нажатий, на ПК — перезапуск сам.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Установка -->
+  <section id="install">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Установка</span>
+        <h2>Пара минут на любом устройстве</h2>
+        <p>Все файлы лежат на странице релизов GitHub. Бери последнюю версию.</p>
+      </div>
+      <div class="install">
+        <article class="glass platform">
+          <div class="platform-head">
+            <div class="pi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.4 11.4 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52M7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5m10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5"/></svg></div>
+            <div><h3>Android</h3><small>Android 10 и новее</small></div>
+          </div>
+          <ol class="steps">
+            <li><div><b>Скачай APK</b><span>На странице релизов выбери файл для своего телефона — таблица ниже.</span></div></li>
+            <li><div><b>Разреши установку</b><span>Открой файл. Android спросит, можно ли ставить приложения из этого источника — разреши.</span></div></li>
+            <li><div><b>Открой Quadro</b><span>При первом запуске появится экран приветствия: вставь ссылку из буфера или отсканируй QR-код.</span></div></li>
+            <li><div><b>Разреши VPN</b><span>При первом подключении Android покажет системный запрос на создание VPN — нажми «ОК».</span></div></li>
+          </ol>
+          <div class="abi">
+            <code>arm64-v8a</code><span>почти все телефоны последних лет</span>
+            <code>armeabi-v7a</code><span>старые 32-битные телефоны</span>
+            <code>x86_64</code><span>эмуляторы и редкие планшеты</span>
+          </div>
+          <a class="btn btn-glass" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener" style="align-self:flex-start">Открыть релизы</a>
+        </article>
+
+        <article class="glass platform">
+          <div class="platform-head">
+            <div class="pi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.5v7H3zM11.5 4.4 21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></svg></div>
+            <div><h3>Windows</h3><small>Windows 10 и 11, 64-бит</small></div>
+          </div>
+          <ol class="steps">
+            <li><div><b>Скачай установщик</b><span>Файл <span class="mono">Quadro-Setup-1.7.1.exe</span> на странице релизов.</span></div></li>
+            <li><div><b>Запусти его</b><span>Права администратора не нужны: Quadro ставится в твою папку пользователя, ярлык появится в «Пуске».</span></div></li>
+            <li><div><b>Открой Quadro</b><span>Перейди во вкладку «Серверы» и добавь ссылку от провайдера.</span></div></li>
+            <li><div><b>Выбери режим</b><span>«Системный прокси» подходит для браузеров. Для игр и всех программ включи «TUN» — Quadro попросит перезапуститься от администратора.</span></div></li>
+          </ol>
+          <p class="note"><b>Окно «Windows защитил ваш компьютер»?</b> Установщик пока без цифровой подписи. Нажми «Подробнее» → «Выполнить в любом случае».</p>
+          <a class="btn btn-glass" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener" style="align-self:flex-start">Открыть релизы</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Первое подключение -->
+  <section id="start">
+    <div class="wrap start">
+      <div>
+        <div class="sec-head">
+          <span class="eyebrow">Первое подключение</span>
+          <h2>От ссылки до работающего VPN</h2>
+        </div>
+        <ol class="steps">
+          <li><div><b>Получи ссылку у провайдера</b><span>Обычно её присылает бот в Telegram или личный кабинет. Подойдёт ссылка на сервер или на подписку.</span></div></li>
+          <li><div><b>Добавь её в Quadro</b>
+            <div class="platform-split">
+              <span><em>Android:</em> скопируй ссылку и нажми «Вставить ссылку из буфера» или отсканируй QR-код.</span>
+              <span><em>Windows:</em> «Серверы» → вставь в поле → «Добавить» или «Из буфера».</span>
+            </div></div></li>
+          <li><div><b>Нажми большую кнопку</b><span>Кнопка станет цветной, а под ней появится «Подключено» и время сеанса.</span></div></li>
+          <li><div><b>Убедись, что всё работает</b><span>В карточке «Задержка» появятся миллисекунды и IP-адрес страны сервера. Если что-то не так — загляни в «Журнал».</span></div></li>
+        </ol>
+      </div>
+      <div class="shot">
+        <div class="window">
+          <div class="window-bar"><i></i><i></i><i></i><span>Серверы</span></div>
+          <img src="assets/servers.webp" width="1560" height="1050" alt="Экран «Серверы» в Quadro для Windows: поле для ссылки, подписка с пингом серверов и переключателем авто-выбора">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Режимы -->
+  <section id="modes">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Quadro для ПК</span>
+        <h2>Прокси или TUN?</h2>
+        <p>Переключатель режима — вверху главного экрана. Если не уверен, начни с системного прокси.</p>
+      </div>
+      <div class="glass modes">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Системный прокси<small>для браузеров</small></th>
+              <th scope="col">TUN<small>для всего компьютера</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Что идёт через VPN</th><td>Браузеры и программы, которые учитывают прокси Windows</td><td>Весь трафик, включая игры и Telegram Desktop</td></tr>
+            <tr><th scope="row">Права администратора</th><td><span class="yes">Не нужны</span></td><td><span class="no">Нужны</span> — Quadro перезапустится сам</td></tr>
+            <tr><th scope="row">Сплит по программам</th><td><span class="no">Нет</span></td><td><span class="yes">Есть</span>: «только выбранные» или «выбранные мимо VPN»</td></tr>
+            <tr><th scope="row">Сплит по сайтам</th><td><span class="yes">Есть</span></td><td><span class="yes">Есть</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Маршрутизация -->
+  <section id="routing">
+    <div class="wrap routing">
+      <div class="shot">
+        <div class="window">
+          <div class="window-bar"><i></i><i></i><i></i><span>Маршрутизация</span></div>
+          <img src="assets/routing.webp" width="1560" height="1050" alt="Экран «Маршрутизация»: программы мимо VPN (steam.exe, Telegram.exe, cs2.exe), российские сайты напрямую, свои списки доменов">
+        </div>
+      </div>
+      <div>
+        <div class="sec-head">
+          <span class="eyebrow">Маршрутизация</span>
+          <h2>Сам решай, что идёт через VPN</h2>
+        </div>
+        <div class="rules">
+          <div class="rule"><i style="background:var(--good)"></i><div><h3>Российские сайты напрямую</h3><p>Включено по умолчанию: .ru, .рф, .su, банки, Госуслуги, Яндекс, VK и российские IP-адреса.</p></div></div>
+          <div class="rule"><i style="background:var(--cyan)"></i><div><h3>Свои списки сайтов</h3><p>«Всегда напрямую» и «Всегда через VPN» — по одному домену в строке. Второй список важнее зоны .ru.</p></div></div>
+          <div class="rule"><i style="background:var(--violet)"></i><div><h3>Программы и приложения</h3><p>На Android — выбор приложений в «Сплит-туннелировании». На ПК — список .exe в режиме TUN.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Вопросы -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Вопросы</span>
+        <h2>Если что-то пошло не так</h2>
+      </div>
+      <div class="faq">
+        <article class="glass qa">
+          <h3>Где взять сервер?</h3>
+          <p>У любого VPN-провайдера, который выдаёт ссылки для Xray-клиентов (v2rayNG, Hiddify, Happ и подобных). Quadro сам серверы не продаёт и не раздаёт.</p>
+        </article>
+        <article class="glass qa">
+          <h3>Не подключается</h3>
+          <p>Открой «Журнал» — там видна причина. Частые случаи: сервер не отвечает (попробуй другой или обнови подписку), неверное время на устройстве, порт занят другой VPN-программой на ПК.</p>
+        </article>
+        <article class="glass qa">
+          <h3>Пишет «Достигнут лимит устройств»</h3>
+          <p>Провайдер считает устройства по HWID. Отвяжи старое устройство в боте или личном кабинете провайдера, затем обнови подписку.</p>
+        </article>
+        <article class="glass qa">
+          <h3>Сайт не открывается с VPN</h3>
+          <p>Добавь его домен в «Всегда напрямую» или, наоборот, в «Всегда через VPN» и переподключись. Quadro подскажет, когда нужно переподключиться.</p>
+        </article>
+        <article class="glass qa">
+          <h3>Что Quadro отправляет в сеть?</h3>
+          <p>Разработчику — ничего. Запросы идут к твоему провайдеру (подписка), на GitHub (проверка обновлений) и через VPN к cp.cloudflare.com и ip-api.com, чтобы показать задержку и IP.</p>
+        </article>
+        <article class="glass qa">
+          <h3>Как обновить?</h3>
+          <p>Quadro сам проверяет новые версии. Когда выйдет обновление, в «Настройках» появится кнопка «Обновить». Серверы и настройки сохранятся.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="glass download">
+        <div>
+          <h2>Скачай Quadro</h2>
+          <p>Android-APK, установщик для Windows и архив для автообновления лежат в одном релизе на GitHub.</p>
+        </div>
+        <a class="btn btn-primary" href="https://github.com/n1lesoff/Quadro/releases/latest" target="_blank" rel="noopener">Перейти к релизам</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Quadro · разработчик N1les. Основан на open-source клиенте TeapodStream; внутри работают Xray-core и sing-box.</p>
+    <a href="https://github.com/n1lesoff/Quadro" target="_blank" rel="noopener">github.com/n1lesoff/Quadro</a>
+  </div>
+</footer>
+</body>
+</html>
